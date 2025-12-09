@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MKV Video Player</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                </div>
+                <span class="logo-text">MKV Video Player</span>
+            </a>
+            
+            <div class="header-actions">
+                <div class="status-badge" id="ffmpegStatus">
+                    <span class="status-dot"></span>
+                    <span>Checking...</span>
+                </div>
+                <button class="theme-toggle" id="themeToggle">
+                    <span class="theme-icon">🌙</span>
+                    <span>Dark</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-container">
+        <!-- URL Input Section -->
+        <section class="url-section">
+            <div class="url-input-wrapper">
+                <input 
+                    type="text" 
+                    class="url-input" 
+                    id="videoUrl" 
+                    placeholder="Paste video URL here (MKV, MP4, WebM supported)"
+                    autocomplete="off"
+                    spellcheck="false"
+                >
+                <div class="btn-group">
+                    <button class="btn btn-primary" id="loadBtn">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                        Load Video
+                    </button>
+                    <button class="btn btn-secondary" id="analyzeBtn">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                        Analyze
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Messages -->
+            <div class="message error" id="errorMessage">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                <span id="errorText"></span>
+                <button class="message-close" onclick="hideMessage('error')">×</button>
+            </div>
+            
+            <div class="message warning" id="warningMessage">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+                <span id="warningText"></span>
+                <button class="message-close" onclick="hideMessage('warning')">×</button>
+            </div>
+            
+            <div class="message success" id="successMessage">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                <span id="successText"></span>
+                <button class="message-close" onclick="hideMessage('success')">×</button>
+            </div>
+        </section>
+
+        <!-- Player Section -->
+        <section class="player-section">
+            <!-- Video Player -->
+            <div class="player-wrapper" id="playerWrapper">
+                <!-- Placeholder -->
+                <div class="video-placeholder" id="videoPlaceholder">
+                    <div class="placeholder-icon">🎬</div>
+                    <p class="placeholder-text">
+                        Enter a video URL above and click "Load Video" to start playing.<br>
+                        Click "Analyze" to see available audio tracks and subtitles.
+                    </p>
+                </div>
+
+                <!-- Video Element -->
+                <video 
+                    class="video-element" 
+                    id="videoPlayer"
+                    crossorigin="anonymous"
+                    playsinline
+                    preload="metadata"
+                ></video>
+
+                <!-- Loading Overlay -->
+                <div class="loading-overlay" id="loadingOverlay">
+                    <div class="spinner"></div>
+                    <div class="loading-text" id="loadingText">Loading video...</div>
+                </div>
+
+                <!-- Play Indicator -->
+                <div class="play-indicator" id="playIndicator">
+                    <svg viewBox="0 0 24 24" fill="currentColor" id="playIndicatorIcon">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                </div>
+
+                <!-- Big Play Button -->
+                <div class="big-play-overlay" id="bigPlayOverlay">
+                    <button class="big-play-btn" id="bigPlayBtn">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Subtitles -->
+                <div class="subtitles-container" id="subtitlesContainer">
+                    <span class="subtitle-text" id="subtitleText"></span>
+                </div>
+
+                <!-- Video Controls -->
+                <div class="video-controls" id="videoControls">
+                    <!-- Progress Bar -->
+                    <div class="progress-container" id="progressContainer">
+                        <div class="progress-buffer" id="progressBuffer"></div>
+                        <div class="progress-bar" id="progressBar"></div>
+                        <div class="progress-handle" id="progressHandle"></div>
+                        <div class="time-tooltip" id="timeTooltip">0:00</div>
+                    </div>
+
+                    <!-- Controls Row -->
+                    <div class="controls-row">
+                        <!-- Play/Pause -->
+                        <button class="control-btn large" id="playPauseBtn" title="Play/Pause (Space)">
+                            <svg viewBox="0 0 24 24" fill="currentColor" id="playPauseIcon">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                        </button>
+
+                        <!-- Skip Backward -->
+                        <button class="control-btn" id="skipBackBtn" title="Rewind 10s (←)">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/>
+                            </svg>
+                        </button>
+
+                        <!-- Skip Forward -->
+                        <button class="control-btn" id="skipForwardBtn" title="Forward 10s (→)">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/>
+                            </svg>
+                        </button>
+
+                        <!-- Volume -->
+                        <div class="volume-control">
+                            <button class="control-btn" id="volumeBtn" title="Mute (M)">
+                                <svg viewBox="0 0 24 24" fill="currentColor" id="volumeIcon">
+                                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                                </svg>
+                            </button>
+                            <div class="volume-slider-wrapper">
+                                <input type="range" class="volume-slider" id="volumeSlider" min="0" max="1" step="0.05" value="1">
+                            </div>
+                        </div>
+
+                        <!-- Time Display -->
+                        <div class="time-display">
+                            <span id="currentTime">0:00</span>
+                            <span class="time-separator">/</span>
+                            <span id="duration">0:00</span>
+                        </div>
+
+                        <div class="controls-spacer"></div>
+
+                        <!-- Audio Tracks -->
+                        <div class="dropdown">
+                            <button class="control-btn" id="audioBtn" title="Audio Tracks">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z"/>
+                                </svg>
+                                <span class="badge" id="audioBadge" style="display:none;">0</span>
+                            </button>
+                            <div class="dropdown-menu" id="audioMenu">
+                                <div class="dropdown-header">Audio Track</div>
+                                <div id="audioMenuItems">
+                                    <div class="no-tracks">Analyze video first</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Subtitles -->
+                        <div class="dropdown">
+                            <button class="control-btn" id="subtitleBtn" title="Subtitles (C)">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1z"/>
+                                </svg>
+                                <span class="badge" id="subtitleBadge" style="display:none;">0</span>
+                            </button>
+                            <div class="dropdown-menu" id="subtitleMenu">
+                                <div class="dropdown-header">Subtitles</div>
+                                <div id="subtitleMenuItems">
+                                    <div class="no-tracks">Analyze video first</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Speed -->
+                        <div class="dropdown">
+                            <button class="control-btn" id="speedBtn" title="Playback Speed">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M10 8v8l6-4-6-4zm9-5H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
+                                </svg>
+                            </button>
+                            <div class="dropdown-menu" id="speedMenu">
+                                <div class="dropdown-header">Playback Speed</div>
+                                <div class="dropdown-item" data-speed="0.25">0.25x</div>
+                                <div class="dropdown-item" data-speed="0.5">0.5x</div>
+                                <div class="dropdown-item" data-speed="0.75">0.75x</div>
+                                <div class="dropdown-item active" data-speed="1">1x (Normal)</div>
+                                <div class="dropdown-item" data-speed="1.25">1.25x</div>
+                                <div class="dropdown-item" data-speed="1.5">1.5x</div>
+                                <div class="dropdown-item" data-speed="1.75">1.75x</div>
+                                <div class="dropdown-item" data-speed="2">2x</div>
+                            </div>
+                        </div>
+
+                        <!-- Fullscreen -->
+                        <button class="control-btn" id="fullscreenBtn" title="Fullscreen (F)">
+                            <svg viewBox="0 0 24 24" fill="currentColor" id="fullscreenIcon">
+                                <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Track Sidebar -->
+            <aside class="track-sidebar" id="trackSidebar">
+                <div class="sidebar-header">
+                    <h3 class="sidebar-title">
+                        <span>📊</span> Media Info
+                    </h3>
+                </div>
+                <div class="sidebar-content">
+                    <!-- Video Info -->
+                    <div class="track-section" id="videoInfoSection" style="display:none;">
+                        <h4 class="track-section-title">🎬 Video</h4>
+                        <div class="video-info-card" id="videoInfoCard"></div>
+                    </div>
+
+                    <!-- Audio Tracks -->
+                    <div class="track-section" id="audioSection">
+                        <h4 class="track-section-title">🔊 Audio Tracks</h4>
+                        <div class="track-list" id="audioTrackList">
+                            <div class="no-tracks-message">
+                                <div class="icon">🎵</div>
+                                <p>Click "Analyze" to detect audio tracks</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Subtitle Tracks -->
+                    <div class="track-section" id="subtitleSection">
+                        <h4 class="track-section-title">📝 Subtitles</h4>
+                        <div class="track-list" id="subtitleTrackList">
+                            <div class="no-tracks-message">
+                                <div class="icon">💬</div>
+                                <p>Click "Analyze" to detect subtitles</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </section>
+
+        <!-- Features Section -->
+        <section class="features-section">
+            <h2 class="features-title">✨ Features</h2>
+            <div class="features-grid">
+                <div class="feature-item">
+                    <div class="feature-icon">🎥</div>
+                    <span class="feature-text">MKV, MP4, WebM & more formats</span>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🔊</div>
+                    <span class="feature-text">Multiple audio track selection</span>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">📝</div>
+                    <span class="feature-text">Embedded subtitle support</span>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">⚡</div>
+                    <span class="feature-text">Playback speed control</span>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">📱</div>
+                    <span class="feature-text">Mobile-friendly design</span>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🔒</div>
+                    <span class="feature-text">Secure video proxy</span>
+                </div>
+            </div>
+            
+            <div class="shortcuts-section">
+                <h3 class="shortcuts-title">⌨️ Keyboard Shortcuts</h3>
+                <div class="shortcuts-grid">
+                    <div class="shortcut-item"><span class="shortcut-key">Space</span> Play/Pause</div>
+                    <div class="shortcut-item"><span class="shortcut-key">←</span> Rewind 10s</div>
+                    <div class="shortcut-item"><span class="shortcut-key">→</span> Forward 10s</div>
+                    <div class="shortcut-item"><span class="shortcut-key">↑</span> Volume Up</div>
+                    <div class="shortcut-item"><span class="shortcut-key">↓</span> Volume Down</div>
+                    <div class="shortcut-item"><span class="shortcut-key">M</span> Mute</div>
+                    <div class="shortcut-item"><span class="shortcut-key">F</span> Fullscreen</div>
+                    <div class="shortcut-item"><span class="shortcut-key">C</span> Subtitles</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/player.js') }}"></script>
+</body>
+</html>
